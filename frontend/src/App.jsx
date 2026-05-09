@@ -1,29 +1,26 @@
 import { Layout, Tabs, Typography } from 'antd';
 
+import LlmUsagePanel from '@/modules/DevDashboardModule/panels/LlmUsagePanel';
+import EmailTokenPanel from '@/modules/DevDashboardModule/panels/EmailTokenPanel';
+import UserActivityPanel from '@/modules/DevDashboardModule/panels/UserActivityPanel';
+import McpHealthPanel from '@/modules/DevDashboardModule/panels/McpHealthPanel';
+import LogsPanel from '@/modules/DevDashboardModule/panels/LogsPanel';
+import DbSummaryPanel from '@/modules/DevDashboardModule/panels/DbSummaryPanel';
+
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 const PANELS = [
-  { key: 'llm-usage', label: 'LLM Usage' },
-  { key: 'email-token', label: 'Email Token' },
-  { key: 'user-activity', label: 'User Activity' },
-  { key: 'mcp-health', label: 'MCP Health' },
-  { key: 'logs', label: 'Logs' },
-  { key: 'db-summary', label: 'DB Summary' },
+  { key: 'llm-usage', label: 'LLM Usage', component: <LlmUsagePanel /> },
+  { key: 'email-token', label: 'Email Token', component: <EmailTokenPanel /> },
+  { key: 'user-activity', label: 'User Activity', component: <UserActivityPanel /> },
+  { key: 'mcp-health', label: 'MCP Health', component: <McpHealthPanel /> },
+  { key: 'logs', label: 'Logs', component: <LogsPanel /> },
+  { key: 'db-summary', label: 'DB Summary', component: <DbSummaryPanel /> },
 ];
 
-const PLACEHOLDER_TEXT = 'Coming soon — wired in D11 (backend) + D12 (frontend)';
-
 export default function App() {
-  const items = PANELS.map(({ key, label }) => ({
-    key,
-    label,
-    children: (
-      <div style={{ padding: '24px 8px', color: '#888' }}>
-        {label} — {PLACEHOLDER_TEXT}
-      </div>
-    ),
-  }));
+  const items = PANELS.map(({ key, label, component }) => ({ key, label, children: component }));
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
