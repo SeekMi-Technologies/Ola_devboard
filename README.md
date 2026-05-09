@@ -5,10 +5,12 @@ that lets the engineering team see LLM token usage, user activity, MCP/nanobot
 health, recent logs, and DB summary at a glance. Decoupled from the CRM
 codebase so the product repo doesn't carry dev-only tooling.
 
-> **Status — D10 scaffold (2026-05-09)**: this is the skeleton commit. Real
-> panel implementations land in D11 (backend) and D12 (frontend). See the
-> CRM `task.md` for the full plan (gitignored, lives at
-> `/Users/duke/Documents/GitHub/crm/task.md`).
+> **Status — v0 feature-complete (D13, 2026-05-09)**: scaffold (D10) +
+> backend (D11) + frontend (D12) + integration smoke (D13) all landed.
+> See the CRM `task.md` for the full plan (gitignored, lives at
+> `/Users/duke/Documents/GitHub/crm/task.md`). Production deployment +
+> auth design is a separate follow-up issue and is intentionally not in
+> v0 scope.
 
 ## What this repo is, and is not
 
@@ -117,13 +119,72 @@ See `.env.example` for the full list. Key ones:
 | `BACKEND_PORT` | 8890 | default ok |
 | `FRONTEND_PORT` | 3001 | default ok |
 
+## Architecture (data flow)
+
+```
+                 reads same Atlas DB
+   ┌──────────────────────────────────────────────────┐
+   │                                                  ▼
+┌──┴───────────┐         ┌─────────────────┐    ┌──────────┐
+│ CRM backend  │────────►│ MongoDB Atlas   │◄───│ Devboard │
+│ :8888        │ writes  │ (LlmUsage,      │    │ backend  │
+│              │         │  Admin, ...)    │    │ :8890    │
+└──────┬───────┘         └─────────────────┘    └────┬─────┘
+       │                                              ▲
+       │ writes JSON-Lines                            │ tails (env
+       ▼                                              │  MCP_LOG_FILE_PATH)
+┌──────────────┐                                      │
+│ backend/logs │──────────────────────────────────────┘
+│ /mcp.log     │
+└──────────────┘
+       ▲
+       │ exposes :8889/health
+┌──────┴───────┐         probes loopback
+│ MCP server   │◄──────────────────────────┐
+│ :8889        │                            │
+└──────────────┘                            │
+                                            │
+┌──────────────┐                            │
+│ Devboard     │ requests /api/dashboard/* ─┘
+│ frontend     │
+│ :3001        │
+└──────────────┘
+```
+
+CRM produces telemetry; devboard reads it. The 4 coupling points (see
+above) are the only contract surface — keep them stable across both
+repos.
+
 ## Running tests
 
 ```bash
-npm --prefix backend test         # jest + supertest
-npm --prefix frontend test        # vitest + @testing-library/react
-bash backend/test/integration/test_devboard_smoke.sh   # added in D13
+npm --prefix backend test         # jest + supertest (~56 cases)
+npm --prefix frontend test        # vitest + @testing-library/react (3 cases)
+bash backend/test/integration/test_devboard_smoke.sh   # 8-T live curl smoke
 ```
+
+Layers:
+| Layer | What it catches | When to run |
+|---|---|---|
+| jest unit (per-controller) | aggregation math, Joi shapes | every commit |
+| jest e2e (`test/e2e.test.js`) | Express wiring, end-to-end shape | every commit |
+| jest read-only invariant (`test/readOnly.test.js`) | future write-method regressions | every commit |
+| vitest App-level (`src/App.test.jsx`) | panel imports + tab switching | every commit |
+| smoke shell | live HTTP against the running backend | before push |
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `bash start-dev.sh` says `.env` not found | Fresh clone | `cp .env.example .env` and fill in `DATABASE` |
+| Backend boots but `db-summary` returns 503 | `DATABASE` env wrong / Atlas unreachable | Re-check `.env` against the same string the CRM uses |
+| `Logs` panel shows "MCP_LOG_FILE_PATH not configured" | Env unset | Point it at your CRM checkout: `MCP_LOG_FILE_PATH=/Users/.../crm/backend/logs/mcp.log` |
+| `MCP Health` panel shows all three down | CRM stack not running | `cd ~/.../crm && bash start-dev.sh` in another terminal |
+| `MCP` only is down, nanobot two are up (or vice versa) | Real outage — investigate | This is the panel doing its job |
+| Frontend port 3001 occupied | Stale `vite` from a previous run | `lsof -iTCP:3001 -sTCP:LISTEN` then kill |
+| Backend port 8890 occupied | Stale node | `lsof -iTCP:8890 -sTCP:LISTEN` then kill |
+| smoke shell fails T8 (`mongodb://` leak) | `db-summary` controller regression | Hard regression — investigate before merge |
+| Push to `origin/main` returns 403 | Git fell back to wrong HTTPS credential | Switch remote to SSH: `git remote set-url origin git@github.com:SeekMi-Technologies/Ola_devboard.git` |
 
 ## Deployment
 

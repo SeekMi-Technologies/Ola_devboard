@@ -13,11 +13,19 @@ if [[ ! -f "$ROOT/.env" ]]; then
   echo "[start-dev] WARNING: $ROOT/.env not found. Copy .env.example -> .env first." >&2
 fi
 
-echo "============================================================"
-echo "  Ola_devboard — booting backend (8890) + frontend (3001)"
-echo "  Bind: 127.0.0.1 only (v0 local-only design)"
-echo "  Ctrl-C to stop both processes."
-echo "============================================================"
+cat <<'BANNER'
+============================================================
+  Ola_devboard — booting both processes
+
+    backend  → http://127.0.0.1:8890   (loopback only, no auth)
+    frontend → http://127.0.0.1:3001   (open this in your browser)
+
+  Smoke shell:
+    bash backend/test/integration/test_devboard_smoke.sh
+
+  Ctrl-C to stop both processes.
+============================================================
+BANNER
 
 # Track child PIDs so we can clean them up on Ctrl-C.
 PIDS=()
