@@ -1,18 +1,7 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-// Two side-by-side metrics on the panel reflect different signals:
-//   - "Active sessions" — any authenticated API call updates Admin.lastActivity
-//     via the trackActivity middleware. Reflects raw web/CRM activity.
-//   - "AI active users" — distinct userId on LlmUsage in the same window.
-//     Reflects Ask Ola / future email-channel agent usage. A user can be
-//     present in one set but not the other (e.g. salesperson editing quotes
-//     without invoking Ola, or email-agent activity without an active
-//     browser session).
-//
-// Default 15 minutes is the operator's "right now" intuition; we cap at
-// 1440 minutes (24h) so a stray query string can't run a full-table scan
-// on lastActivity.
+// 24h cap prevents a query string from triggering a full-table scan.
 const querySchema = Joi.object({
   windowMinutes: Joi.number().integer().min(1).max(1440).default(15),
   limit: Joi.number().integer().min(1).max(100).default(20),
@@ -50,10 +39,7 @@ async function getUserActivity(req, res) {
     }),
   ]);
 
-  // Resolve LLM-active user ids → admin info. A userId can land in
-  // LlmUsage but no longer correspond to an existing Admin (rare:
-  // soft-deleted account). Filter those out so the table doesn't
-  // surface ghost rows.
+  // Filter soft-deleted admins so ghost LLM-only rows don't surface.
   const aiUsers = aiUserIds.length
     ? await Admin.find(
         { _id: { $in: aiUserIds }, removed: false },

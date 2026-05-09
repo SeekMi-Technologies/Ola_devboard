@@ -1,11 +1,4 @@
-// AntD's responsive observer + a couple of components reach for
-// `window.matchMedia` and `IntersectionObserver`, neither of which jsdom
-// implements. Each panel-level vitest pulls this module via a top-level
-// import so the stubs are in place before AntD's responsive observer
-// boots inside the first render.
-//
-// Keep this list minimal — only stub APIs that are *missing*, not just
-// unobserved. Stubbing too aggressively will hide real bugs.
+// jsdom polyfills for AntD's responsive observer. Keep minimal.
 
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   window.matchMedia = (query) => ({

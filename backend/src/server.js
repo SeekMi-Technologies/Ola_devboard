@@ -1,27 +1,14 @@
-// Devboard backend entry point.
-//
-// Hard rule (v0): bind 127.0.0.1 only. Off-loopback exposure is a follow-up
-// issue — we'd need real auth before binding 0.0.0.0.
-
-// module-alias must be registered before any other require so subsequent
-// `require('@/...')` calls resolve correctly at runtime (jest uses
-// moduleNameMapper so tests don't need this register).
 require('module-alias/register');
 
 const path = require('path');
-require('dotenv').config({
-  path: path.resolve(__dirname, '..', '..', '.env'),
-});
-require('dotenv').config({
-  path: path.resolve(__dirname, '..', '.env.local'),
-  override: true,
-});
+require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env.local'), override: true });
 
 const buildApp = require('./app');
 const { connect: connectDb } = require('./db');
 
 const PORT = Number(process.env.BACKEND_PORT) || 8890;
-const HOST = '127.0.0.1';
+const HOST = '127.0.0.1'; // v0: loopback bind = security boundary; no auth.
 
 async function main() {
   await connectDb();

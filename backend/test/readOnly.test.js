@@ -1,14 +1,5 @@
-// Static-analysis test for the devboard read-only red-line.
-//
-// Defense in depth: even if a future controller author forgets the rule
-// and writes `LlmUsage.findByIdAndUpdate(...)`, jest catches it before
-// the change ships. Different test category from `e2e.test.js` —
-// runtime HTTP tests can't catch a write path that's not exercised
-// during a happy-path request.
-//
-// We grep every controller source file for forbidden mongoose write
-// methods. New write methods should be added to FORBIDDEN as mongoose
-// adds them.
+// Static-analysis enforcement of the read-only red-line; runtime HTTP
+// tests can't catch a write path that no request exercises.
 
 const fs = require('fs');
 const path = require('path');

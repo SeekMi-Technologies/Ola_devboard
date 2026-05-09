@@ -1,41 +1,7 @@
 #!/usr/bin/env bash
-# Real-stack integration smoke for the devboard backend (Ola/#220 D13).
-#
-# Mirrors the spirit of CRM's old `test_internal_dashboard_gate.sh`
-# (removed in CRM commit 09ef44e along with the rest of the dashboard)
-# but trimmed for devboard's surface:
-#   - no auth chain → no 401/403 assertions
-#   - URL prefix is /api/dashboard/* (not /api/internal/dashboard/*)
-#   - one extra Joi-boundary assertion (logs limit=501) since this layer
-#     can catch input-validation regressions the unit suite cannot
-#
-# Prerequisites:
-#   - Devboard backend running on 127.0.0.1:8890. Start it with
-#     `bash start-dev.sh` from the repo root, OR
-#     `npm --prefix backend run dev`.
-#   - The devboard .env has DATABASE pointing at the same Atlas the CRM
-#     uses. (The smoke does NOT require the CRM stack to be running —
-#     mcp-health probes will gracefully report ECONNREFUSED for any
-#     unreachable service, and the assertion only checks shape.)
-#
-# Usage:
-#   bash backend/test/integration/test_devboard_smoke.sh
-#   BACKEND_URL=http://127.0.0.1:9999 bash backend/test/integration/test_devboard_smoke.sh
-#
-# Exit code: 0 if all assertions PASS, 1 if any FAIL.
-#
-# Assertions (8):
-#   1. /health → 200 + ok:true (devboard process self liveness)
-#   2. /api/dashboard/llm-usage?range=7d → 200 + 6 documented result keys
-#   3. /api/dashboard/email-token-usage?range=7d → 200 + valid envelope
-#      (either empty-state or full aggregation — UI handles both)
-#   4. /api/dashboard/users/active?windowMinutes=15 → 200 + dual-source keys
-#   5. /api/dashboard/mcp-health → 200 + 3 documented service keys
-#      (each entry whatever ok/error it gets — MCP may not be running)
-#   6. /api/dashboard/logs?source=mcp&limit=10 → 200 + result keys
-#   7. /api/dashboard/logs?limit=501 → 400 (Joi boundary)
-#   8. /api/dashboard/db-summary → 200 + collections + grep-asserted no
-#      `mongodb://` connection-string leak in the response body
+# Live-HTTP smoke for the devboard backend. Run with the BE up on 8890.
+# Override target: BACKEND_URL=http://127.0.0.1:9999 bash ...
+# 8 tests: /health, 6 panels, +1 Joi boundary, +1 no-leak invariant.
 
 set -u
 
@@ -83,8 +49,7 @@ assert_body_lacks() {
   fi
 }
 
-# Pre-flight: surface a friendly error if backend is down rather than
-# letting curl produce 8 connection-refused failures.
+# Pre-flight reachability check — fail fast, not 8x ECONNREFUSED.
 if ! curl -s -o /dev/null --max-time 2 "$BACKEND/health"; then
   echo "  FAIL  devboard backend not reachable at $BACKEND. Start it with \`bash start-dev.sh\` first." >&2
   exit 1

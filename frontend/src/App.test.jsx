@@ -3,18 +3,7 @@ import '@/test-utils/setupAntdJsdom';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 
-// Per Ziyue's "test 不要重复" rule: this file does NOT re-validate panel
-// internals. CRM's per-panel vitest suite already exercised every render
-// branch (loading / error / empty-state / sort / filter), and the panel
-// source files in this repo are byte-for-byte ports of that CRM code with
-// only the request URL adapted (`/internal/dashboard/` → `/dashboard/`).
-//
-// What THIS file validates (and CRM cannot): the App-level wiring works
-// — six panel imports resolve, AntD Tabs renders all six, each tab body
-// boots without throwing when its first request resolves to a minimal
-// shape, and the request module is hit with the expected URL paths. If
-// a future refactor breaks one of those, this test catches it before
-// `npm run dev` would.
+// App-level wiring only (panel internals were validated upstream in CRM).
 
 const requestGetMock = vi.fn();
 vi.mock('@/request', () => ({
@@ -56,8 +45,7 @@ const EMPTY_DB_RESULT = {
   collections: [],
 };
 
-// Route-aware mock — each panel hits a distinct path, return a
-// shape-correct empty payload so it doesn't crash on render.
+// Route-aware mock returning shape-correct empty payloads.
 function mockByEntity(entity) {
   if (entity.startsWith('/dashboard/llm-usage')) return { success: true, result: EMPTY_LLM_RESULT };
   if (entity.startsWith('/dashboard/email-token-usage')) return { success: true, result: EMPTY_EMAIL_RESULT };
@@ -80,7 +68,6 @@ describe('App (D12 — top-level wiring)', () => {
   test('renders the dashboard header + all six tab labels', async () => {
     render(<App />);
     expect(screen.getByText('Ola Dev Dashboard')).toBeDefined();
-    // Tab labels appear in the tab bar regardless of active tab.
     expect(screen.getByText('LLM Usage')).toBeDefined();
     expect(screen.getByText('Email Token')).toBeDefined();
     expect(screen.getByText('User Activity')).toBeDefined();
@@ -100,7 +87,6 @@ describe('App (D12 — top-level wiring)', () => {
     render(<App />);
     await waitFor(() => expect(requestGetMock).toHaveBeenCalled());
 
-    // Click each remaining tab and assert its panel made a request.
     const tabs = [
       { label: 'Email Token', urlPrefix: '/dashboard/email-token-usage' },
       { label: 'User Activity', urlPrefix: '/dashboard/users/active' },

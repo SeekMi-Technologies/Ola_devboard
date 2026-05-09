@@ -1,8 +1,7 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 
-// Shared shape + Joi for any panel that aggregates LlmUsage by time window.
-// Imported by llmUsage.js (D3) and emailToken.js (D4).
+// Shared by panels that aggregate LlmUsage over a time window.
 const rangeSchema = Joi.object({
   range: Joi.string().valid('today', '7d', '30d').default('7d'),
 });
@@ -30,9 +29,7 @@ const EMPTY_TOTALS = Object.freeze({
   costUsd: 0,
 });
 
-// Runs the five canonical LlmUsage aggregations in parallel against `match`
-// (which the caller has already shaped: must include `removed:false` and a
-// `created` window). Returns the result block panels can serve directly.
+// Caller passes a match including `removed:false` + a `created` window.
 async function aggregateUsage(match) {
   const LlmUsage = mongoose.model('LlmUsage');
   const Admin = mongoose.model('Admin');
@@ -122,8 +119,7 @@ async function aggregateUsage(match) {
       }
     : { ...EMPTY_TOTALS };
 
-  // Resolve top-user IDs in one round-trip (admins is small enough that
-  // find({ $in: [...10 ids] }) is cheap and keeps the aggregation portable).
+  // Resolve top-user IDs in one round-trip; cheaper + more portable than $lookup.
   const topUserIds = topUsersAgg.map((u) => u._id).filter(Boolean);
   const admins = topUserIds.length
     ? await Admin.find(

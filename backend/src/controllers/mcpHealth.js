@@ -1,19 +1,6 @@
-// MCP / Nanobot health probe endpoint (#220 D6 → ported to Ola_devboard D11).
-//
-// Probes three local services in parallel. Each URL is read from the env so
-// devboard can point at non-default targets without code changes; defaults
-// match the loopback ports the CRM stack uses (MCP 8889, nanobot serve
-// 8900, nanobot gateway 8901). Each probe has a 1 s timeout — a hung
-// backend must not stall the whole response.
-//
-// The dashboard endpoint always returns HTTP 200 — individual service
-// failures surface inside the result object so the UI can render a red
-// status pill rather than a blanket error. We want to see WHICH service
-// is down, not just "something is down".
-//
-// We do NOT accept a URL from the query string. Letting a query string
-// drive a fetch from this process would be an SSRF foothold against the
-// loopback network the dashboard sits on — hard no.
+// 3-service probe with 1s timeouts. URLs from env (default loopback).
+// Always returns 200 — per-service ok/error lives in result. URLs are NOT
+// query-string-driven (would be SSRF on the loopback network).
 
 const FETCH_TIMEOUT_MS = 1000;
 

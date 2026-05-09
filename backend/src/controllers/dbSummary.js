@@ -1,22 +1,6 @@
-// DB Summary panel controller (#220 D8) — list every collection in the
-// active mongoose connection with its document count and last-inserted
-// metadata.
-//
-// Bounded ops: each collection's countDocuments and findOne race against
-// a 5s timeout via Promise.race. Slow collections (e.g. messages on a
-// busy tenant) surface as `{ count: null, error: 'timeout' }` rather
-// than stalling the whole endpoint. Promise.allSettled wraps everything
-// so one collection blowing up never breaks the response.
-//
-// What we DO NOT expose: connection strings, DB name, mongo user, host.
-// Only the collection name + numeric counts + a tiny `lastInsertedAt`
-// timestamp + the most recent `_id`. The plan calls out this is an
-// internal-only endpoint, but defense in depth — we keep the data
-// surface small even behind the email allowlist.
-//
-// What we DO NOT accept: a query string parameter for "which collection
-// to inspect". Letting a query string drive a Mongo command is an SSRF-
-// style hole even at this scope, and the panel doesn't need it.
+// Per-collection ops time-out at 5s; allSettled isolates failures.
+// Response: name + count + lastInserted{Id,At} only — no URI/host/user.
+// No query parameters (would be SSRF-style).
 
 const mongoose = require('mongoose');
 
@@ -74,8 +58,7 @@ async function summarizeCollection(coll) {
     out.lastInsertedError = lastDocResult.__error;
   } else if (lastDocResult) {
     out.lastInsertedId = String(lastDocResult._id);
-    // ObjectId encodes its creation timestamp — surface that even when the
-    // doc has no `created` field. Falls back to `created` when present.
+    // ObjectId timestamp as fallback when `created` is missing.
     const idTs = lastDocResult._id && lastDocResult._id.getTimestamp
       ? lastDocResult._id.getTimestamp().toISOString()
       : null;
@@ -112,8 +95,7 @@ async function getDbSummary(req, res) {
 
   const summaries = settled.map((s, i) => {
     if (s.status === 'fulfilled') return s.value;
-    // Should be unreachable because summarizeCollection catches its own
-    // promise rejections, but defensive nonetheless.
+    // Defensive: summarizeCollection catches its own rejections.
     return {
       name: collections[i].name,
       count: null,
@@ -121,9 +103,7 @@ async function getDbSummary(req, res) {
     };
   });
 
-  // Default sort: newest activity first by lastInsertedAt, then by count.
-  // The frontend table can re-sort, but this default is the most useful for
-  // operators eyeballing recent writes.
+  // Default sort: newest activity first; FE table can re-sort.
   summaries.sort((a, b) => {
     const ta = a.lastInsertedAt ? Date.parse(a.lastInsertedAt) : 0;
     const tb = b.lastInsertedAt ? Date.parse(b.lastInsertedAt) : 0;
