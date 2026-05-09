@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# Defensive: never commit anything that *looks* like a credential.
+# These are wide patterns mirrored from the CRM repo (see Ola/.gitignore
+# line 48). If you find a false positive (e.g. a util named *secret*),
+# rename the util rather than relax the pattern.
+*secret*
+*password*
+*credential*
+*key*
+!package*.json
+!vite.config.js
+!eslint.config.js
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# task tracker — local only, mirrors CRM convention (see /Users/duke/.claude/...)
+task.md
+
+# coverage / test artefacts
+coverage/
+.nyc_output/
+
+# vitest cache
+.vitest-cache/
