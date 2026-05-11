@@ -49,3 +49,8 @@ coverage/
 
 # vitest cache
 .vitest-cache/
+
+# Per-machine Claude Code memory (project-level skill state, plans, etc.)
+# Never commit. The committed Claude artefacts live in .claude/skills/ +
+# CLAUDE.md at repo root; everything under .claude/projects/ is local user state.
+.claude/projects/
