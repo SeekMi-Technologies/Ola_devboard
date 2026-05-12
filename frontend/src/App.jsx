@@ -3,6 +3,7 @@ import { Layout, Tabs, Typography } from 'antd';
 import LlmUsagePanel from '@/modules/DevDashboardModule/panels/LlmUsagePanel';
 import EmailTokenPanel from '@/modules/DevDashboardModule/panels/EmailTokenPanel';
 import UserActivityPanel from '@/modules/DevDashboardModule/panels/UserActivityPanel';
+import UserPanoramaPanel from '@/modules/DevDashboardModule/panels/UserPanoramaPanel';
 import McpHealthPanel from '@/modules/DevDashboardModule/panels/McpHealthPanel';
 import LogsPanel from '@/modules/DevDashboardModule/panels/LogsPanel';
 import DbSummaryPanel from '@/modules/DevDashboardModule/panels/DbSummaryPanel';
@@ -14,6 +15,7 @@ const PANELS = [
   { key: 'llm-usage', label: 'LLM Usage', component: <LlmUsagePanel /> },
   { key: 'email-token', label: 'Email Token', component: <EmailTokenPanel /> },
   { key: 'user-activity', label: 'User Activity', component: <UserActivityPanel /> },
+  { key: 'users', label: 'Users', component: <UserPanoramaPanel /> },
   { key: 'mcp-health', label: 'MCP Health', component: <McpHealthPanel /> },
   { key: 'logs', label: 'Logs', component: <LogsPanel /> },
   { key: 'db-summary', label: 'DB Summary', component: <DbSummaryPanel /> },

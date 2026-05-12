@@ -33,6 +33,14 @@ const EMPTY_USER_RESULT = {
   activeSessionsLast: 0, aiActiveUsersLast: 0,
   sessions: [], aiUsers: [],
 };
+const EMPTY_PANORAMA_RESULT = {
+  range: '7d',
+  windowStart: '2026-05-01T00:00:00.000Z',
+  windowEnd: '2026-05-08T00:00:00.000Z',
+  totalUsers: 0,
+  activeWindowMinutes: 15,
+  users: [],
+};
 const HEALTHY_MCP_RESULT = {
   mcp: { name: 'MCP', url: 'http://127.0.0.1:8889/health', ok: true, latencyMs: 5 },
   nanobotServe: { name: 'NS', url: 'http://127.0.0.1:8900/health', ok: false, latencyMs: 5, error: 'ECONNREFUSED' },
@@ -50,6 +58,7 @@ function mockByEntity(entity) {
   if (entity.startsWith('/dashboard/llm-usage')) return { success: true, result: EMPTY_LLM_RESULT };
   if (entity.startsWith('/dashboard/email-token-usage')) return { success: true, result: EMPTY_EMAIL_RESULT };
   if (entity.startsWith('/dashboard/users/active')) return { success: true, result: EMPTY_USER_RESULT };
+  if (entity.startsWith('/dashboard/users/panorama')) return { success: true, result: EMPTY_PANORAMA_RESULT };
   if (entity.startsWith('/dashboard/mcp-health')) return { success: true, result: HEALTHY_MCP_RESULT };
   if (entity.startsWith('/dashboard/logs')) return { success: true, result: EMPTY_LOGS_RESULT };
   if (entity.startsWith('/dashboard/db-summary')) return { success: true, result: EMPTY_DB_RESULT };
@@ -65,12 +74,13 @@ describe('App (D12 — top-level wiring)', () => {
     ({ default: App } = await import('./App.jsx'));
   });
 
-  test('renders the dashboard header + all six tab labels', async () => {
+  test('renders the dashboard header + all seven tab labels', async () => {
     render(<App />);
     expect(screen.getByText('Ola Dev Dashboard')).toBeDefined();
     expect(screen.getByText('LLM Usage')).toBeDefined();
     expect(screen.getByText('Email Token')).toBeDefined();
     expect(screen.getByText('User Activity')).toBeDefined();
+    expect(screen.getByText('Users')).toBeDefined();
     expect(screen.getByText('MCP Health')).toBeDefined();
     expect(screen.getByText('Logs')).toBeDefined();
     expect(screen.getByText('DB Summary')).toBeDefined();
@@ -90,6 +100,7 @@ describe('App (D12 — top-level wiring)', () => {
     const tabs = [
       { label: 'Email Token', urlPrefix: '/dashboard/email-token-usage' },
       { label: 'User Activity', urlPrefix: '/dashboard/users/active' },
+      { label: 'Users', urlPrefix: '/dashboard/users/panorama' },
       { label: 'MCP Health', urlPrefix: '/dashboard/mcp-health' },
       { label: 'Logs', urlPrefix: '/dashboard/logs' },
       { label: 'DB Summary', urlPrefix: '/dashboard/db-summary' },
