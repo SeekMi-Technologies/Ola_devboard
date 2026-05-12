@@ -44,6 +44,7 @@ function buildApp() {
   app.get('/api/dashboard/llm-usage', safe(controllers.getLlmUsage));
   app.get('/api/dashboard/email-token-usage', safe(controllers.getEmailToken));
   app.get('/api/dashboard/users/active', safe(controllers.getUserActivity));
+  app.get('/api/dashboard/users/panorama', safe(controllers.getUserPanorama));
   app.get('/api/dashboard/mcp-health', safe(controllers.getMcpHealth));
   app.get('/api/dashboard/logs', safe(controllers.getLogs));
   app.get('/api/dashboard/db-summary', safe(controllers.getDbSummary));

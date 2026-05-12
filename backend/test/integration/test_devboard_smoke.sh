@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Live-HTTP smoke for the devboard backend. Run with the BE up on 8890.
 # Override target: BACKEND_URL=http://127.0.0.1:9999 bash ...
-# 8 tests: /health, 6 panels, +1 Joi boundary, +1 no-leak invariant.
+# 9 tests: /health, 7 panels, +1 Joi boundary, +1 no-leak invariant.
 
 set -u
 
@@ -137,6 +137,15 @@ assert_body_has "db-summary" "$TMP/t8.json" '"collections"'
 assert_body_lacks "db-summary" "$TMP/t8.json" 'mongodb://'
 assert_body_lacks "db-summary" "$TMP/t8.json" 'mongodb+srv://'
 assert_body_lacks "db-summary" "$TMP/t8.json" '27017'
+
+echo
+echo "=== T9: GET /api/dashboard/users/panorama?range=7d ==="
+S=$(curl -s -o "$TMP/t9.json" -w "%{http_code}" "$BACKEND/api/dashboard/users/panorama?range=7d")
+assert_status "users/panorama" "200" "$S"
+assert_body_has "users/panorama" "$TMP/t9.json" '"success":true'
+for key in range windowStart windowEnd totalUsers activeWindowMinutes users; do
+  assert_body_has "users/panorama" "$TMP/t9.json" "\"$key\""
+done
 
 echo
 echo "=== Summary: $PASS passed, $FAIL failed ==="

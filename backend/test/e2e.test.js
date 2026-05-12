@@ -45,6 +45,7 @@ const ENDPOINTS = [
   { name: 'llm-usage', url: '/api/dashboard/llm-usage?range=7d' },
   { name: 'email-token-usage', url: '/api/dashboard/email-token-usage?range=7d' },
   { name: 'users/active', url: '/api/dashboard/users/active?windowMinutes=15' },
+  { name: 'users/panorama', url: '/api/dashboard/users/panorama?range=7d' },
   { name: 'mcp-health', url: '/api/dashboard/mcp-health' },
   { name: 'logs', url: '/api/dashboard/logs?source=mcp&limit=5' },
   { name: 'db-summary', url: '/api/dashboard/db-summary' },
@@ -97,6 +98,21 @@ describe('e2e — endpoint-specific shape contract', () => {
     ]) {
       expect(res.body.result[k]).toBeDefined();
     }
+  });
+
+  test('users/panorama carries the documented top-level keys and rejects bad range', async () => {
+    const ok = await supertest(app).get('/api/dashboard/users/panorama?range=7d');
+    for (const k of [
+      'range', 'windowStart', 'windowEnd', 'totalUsers',
+      'activeWindowMinutes', 'users',
+    ]) {
+      expect(ok.body.result[k]).toBeDefined();
+    }
+    expect(Array.isArray(ok.body.result.users)).toBe(true);
+
+    const bad = await supertest(app).get('/api/dashboard/users/panorama?range=forever');
+    expect(bad.status).toBe(400);
+    expect(bad.body.success).toBe(false);
   });
 
   test('mcp-health carries the three documented service keys', async () => {
