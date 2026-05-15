@@ -4,6 +4,7 @@ const cors = require('cors');
 require('@/models'); // side-effect: register mongoose models
 
 const controllers = require('@/controllers');
+const { cookieParser, requireAuth } = require('@/middleware/requireAuth');
 
 // Wraps async handlers so unexpected throws return 500 without leaking stack.
 function safe(handler) {
@@ -26,10 +27,11 @@ function buildApp() {
   app.use(
     cors({
       origin: ['http://localhost:3001', 'http://127.0.0.1:3001'],
-      credentials: false,
+      credentials: true,
     })
   );
   app.use(express.json({ limit: '256kb' }));
+  app.use(cookieParser);
 
   // Public liveness probe.
   app.get('/health', (_req, res) => {
@@ -41,13 +43,21 @@ function buildApp() {
     });
   });
 
-  app.get('/api/dashboard/llm-usage', safe(controllers.getLlmUsage));
-  app.get('/api/dashboard/email-token-usage', safe(controllers.getEmailToken));
-  app.get('/api/dashboard/users/active', safe(controllers.getUserActivity));
-  app.get('/api/dashboard/users/panorama', safe(controllers.getUserPanorama));
-  app.get('/api/dashboard/mcp-health', safe(controllers.getMcpHealth));
-  app.get('/api/dashboard/logs', safe(controllers.getLogs));
-  app.get('/api/dashboard/db-summary', safe(controllers.getDbSummary));
+  // Public auth surface (Ola/#225-A). /me is intentionally public so the
+  // frontend can probe { authed: bool } on boot without bouncing on 401.
+  app.post('/api/auth/login', safe(controllers.login));
+  app.post('/api/auth/logout', safe(controllers.logout));
+  app.get('/api/auth/me', safe(controllers.me));
+
+  // Protected dashboard surface. The requireAuth middleware short-circuits
+  // with 401 when the session cookie is missing/expired/tampered.
+  app.get('/api/dashboard/llm-usage', requireAuth, safe(controllers.getLlmUsage));
+  app.get('/api/dashboard/email-token-usage', requireAuth, safe(controllers.getEmailToken));
+  app.get('/api/dashboard/users/active', requireAuth, safe(controllers.getUserActivity));
+  app.get('/api/dashboard/users/panorama', requireAuth, safe(controllers.getUserPanorama));
+  app.get('/api/dashboard/mcp-health', requireAuth, safe(controllers.getMcpHealth));
+  app.get('/api/dashboard/logs', requireAuth, safe(controllers.getLogs));
+  app.get('/api/dashboard/db-summary', requireAuth, safe(controllers.getDbSummary));
 
   // Default 404 for anything else.
   app.use((_req, res) => {
