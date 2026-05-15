@@ -17,10 +17,14 @@ cat <<'BANNER'
 ============================================================
   Ola_devboard — booting both processes
 
-    backend  → http://127.0.0.1:8890   (loopback only, no auth)
+    backend  → http://127.0.0.1:8890   (loopback by default; auth-gated)
     frontend → http://127.0.0.1:3001   (open this in your browser)
 
-  Smoke shell:
+  Auth: set DEVBOARD_PASSWORD + SESSION_SECRET in .env (see .env.example).
+  Bind: set BACKEND_HOST=0.0.0.0 ONLY in prod (box4); local dev stays loopback.
+
+  Smoke shell (after .env sourced):
+    set -a; source .env; set +a
     bash backend/test/integration/test_devboard_smoke.sh
 
   Ctrl-C to stop both processes.

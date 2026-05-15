@@ -8,19 +8,23 @@ const buildApp = require('./app');
 const { connect: connectDb } = require('./db');
 
 const PORT = Number(process.env.BACKEND_PORT) || 8890;
-const HOST = '127.0.0.1'; // v0: loopback bind = security boundary; no auth.
+// Default loopback; only override (e.g. '0.0.0.0' on box4) once auth is on.
+// Auth landed in Ola/#225-A, so off-loopback is now safe behind the gate.
+const HOST = process.env.BACKEND_HOST || '127.0.0.1';
 
 async function main() {
   await connectDb();
 
   const app = buildApp();
 
+  const bindDesc = HOST === '127.0.0.1' ? 'loopback only' : `bind ${HOST}`;
   app.listen(PORT, HOST, () => {
     console.log(
-      `[devboard-backend] listening on http://${HOST}:${PORT} (loopback only)`
+      `[devboard-backend] listening on http://${HOST}:${PORT} (${bindDesc})`
     );
+    const probeHost = HOST === '0.0.0.0' ? '127.0.0.1' : HOST;
     console.log(
-      `[devboard-backend] health probe: curl -i http://${HOST}:${PORT}/health`
+      `[devboard-backend] health probe: curl -i http://${probeHost}:${PORT}/health`
     );
   });
 }
