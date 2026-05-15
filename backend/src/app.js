@@ -49,6 +49,11 @@ function buildApp() {
   app.post('/api/auth/logout', safe(controllers.logout));
   app.get('/api/auth/me', safe(controllers.me));
 
+  // Public version probe (Ola/#225-B). Used by the LoginPage footer before
+  // any session is established, and by hot-update scripts to confirm the
+  // running commit hash post-deploy.
+  app.get('/api/version', safe(controllers.getVersion));
+
   // Protected dashboard surface. The requireAuth middleware short-circuits
   // with 401 when the session cookie is missing/expired/tampered.
   app.get('/api/dashboard/llm-usage', requireAuth, safe(controllers.getLlmUsage));

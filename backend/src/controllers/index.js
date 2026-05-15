@@ -9,6 +9,7 @@ module.exports = {
   getMcpHealth: require('./mcpHealth'),
   getLogs: require('./logs'),
   getDbSummary: require('./dbSummary'),
+  getVersion: require('./version'),
   login: auth.login,
   logout: auth.logout,
   me: auth.me,
