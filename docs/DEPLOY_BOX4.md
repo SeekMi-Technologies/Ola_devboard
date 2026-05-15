@@ -42,30 +42,38 @@ tailscale ip   # 看到 100.x.y.z — 记下来
 
 接入后回本地，把 `BOX4_TS_IP=100.x.y.z` 加到 `crm/.secrets/SERVERS.env`。
 
-### 1.3 .env 准备（本地）
+### 1.3 prod 凭据加进 SERVERS.env（box4 .env 自动生成）
 
-```bash
-cd Ola_devboard
-cp .env.example .env
-```
+Box4 端 `.env` 由 [scripts/deploy_box4.sh](../scripts/deploy_box4.sh) **自动**
+从 `crm/.secrets/SERVERS.env` 的变量生成 —— 不复用你本地 `Ola_devboard/.env`
+（那个保持 dev 状态）。这样 SERVERS.env 一处真源覆盖所有 prod 凭据。
 
-填以下 keys（来源标在右侧）：
+你只需要 3 步：
 
-| Key | Value 提示 | 来源 |
-|---|---|---|
-| `DATABASE` | Atlas connection string | `crm/.secrets/SERVERS.env` `DATABASE` |
-| `DEVBOARD_PASSWORD` | 单密码（zyd 选定） | manual |
-| `SESSION_SECRET` | 32 字节 hex | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `COOKIE_SECURE` | `1`（公网 + CF HTTPS） | const |
-| `BACKEND_HOST` | `0.0.0.0`（公网监听） | 仅 prod |
-| `BACKEND_PORT` | `8890` | default |
-| `FRONTEND_PORT` | `3001` | default |
-| `MCP_HEALTH_URL` | `http://100.109.220.126:8889/health` | box1 Tailscale IP |
-| `NANOBOT_SERVE_HEALTH_URL` | `http://100.83.72.110:8900/health` | box2 Tailscale IP |
-| `NANOBOT_GATEWAY_HEALTH_URL` | `http://100.83.72.110:8901/health` | box2 Tailscale IP |
-| `MCP_LOG_FILE_PATH` | 空（graceful degrade，D4） | const |
+1. 生成 SESSION_SECRET：
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+2. 自己定 `DEVBOARD_PASSWORD`（≥16 char，含大小写数字符号）。
+3. 把这 3 行加到 `crm/.secrets/SERVERS.env` 末尾：
+   ```bash
+   # ─── Devboard (Ola/#225) ───
+   DEVBOARD_PASSWORD='<你定的>'
+   SESSION_SECRET='<上一步 node 的输出>'
+   ```
 
-⚠️ **绝不 commit .env**。`chmod 600 .env`。
+`deploy_box4.sh` 读 SERVERS.env 里的 `DATABASE` / `DEVBOARD_PASSWORD` /
+`SESSION_SECRET` / `BOX1_TS_IP` / `BOX2_TS_IP`，在本地 `mktemp` 文件构造
+box4-端 `.env`，scp 上去，`chmod 600`，删本地 tmp。
+
+固定写入 box4 `.env` 的常量（不需要你配）：
+- `BACKEND_HOST=0.0.0.0`（公网监听，要在 auth + nginx + ufw 三层后）
+- `BACKEND_PORT=8890` / `FRONTEND_PORT=3001`
+- `COOKIE_SECURE=1`（CF HTTPS）
+- `MCP_LOG_FILE_PATH=`（空 = graceful degrade，决策 D4）
+
+⚠️ `.secrets/` 已被 CRM `.gitignore`，编辑 SERVERS.env 不影响 git。
+本地 `Ola_devboard/.env` 保持 dev 状态即可。
 
 ## 2. 首次 deploy
 
@@ -78,12 +86,15 @@ SERVERS_ENV=../crm/.secrets/SERVERS.env bash scripts/deploy_box4.sh
 
 脚本依次：
 
-1. box4 prereq 检查（node/npm/git）
-2. clone 或 fast-forward `/opt/Ola_devboard`
-3. scp `.env`（仅当 box4 上没有）
-4. install + daemon-reload 两个 systemd unit
-5. 跑 `hot_update.sh`（npm ci + build + restart + smoke）
-6. `systemctl enable` 两个 unit
+1. 校验 SERVERS.env 必需 keys（`DATABASE`/`DEVBOARD_PASSWORD`/`SESSION_SECRET`/
+   `BOX1_TS_IP`/`BOX2_TS_IP`/`BOX4_*`），缺任一立即退出
+2. box4 prereq 检查（node/npm/git）
+3. clone 或 fast-forward `/opt/Ola_devboard`
+4. 从 SERVERS.env 生成 box4 `.env` 并 scp（仅当 box4 上没有；用 `--force-env`
+   强制覆盖以 rotate 凭据）
+5. install + daemon-reload 两个 systemd unit
+6. 跑 `hot_update.sh`（npm ci + build + restart + smoke）
+7. `systemctl enable` 两个 unit
 
 预期结尾：
 
@@ -92,6 +103,17 @@ SERVERS_ENV=../crm/.secrets/SERVERS.env bash scripts/deploy_box4.sh
 ```
 
 如失败，看 stderr 第一行 → 按 §7 排错。
+
+**Rotate 凭据**：日后想换 `DEVBOARD_PASSWORD` 或 `SESSION_SECRET`：
+
+```bash
+# 1. 在 SERVERS.env 改值
+# 2. 重跑 deploy 带 --force-env:
+SERVERS_ENV=../crm/.secrets/SERVERS.env bash scripts/deploy_box4.sh --force-env
+```
+
+`--force-env` 覆盖 box4 `.env` 后 hot_update restart 服务；旧 cookie 全部
+失效（SESSION_SECRET 变了），所有在线 session forced logout。
 
 ## 3. 部署后验证
 
