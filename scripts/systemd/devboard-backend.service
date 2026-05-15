@@ -1,0 +1,22 @@
+# Ola Devboard backend (Ola/#225-E). Reads /opt/Ola_devboard/.env for
+# DATABASE / DEVBOARD_PASSWORD / SESSION_SECRET / BACKEND_HOST / BACKEND_PORT.
+# Regenerates version.json on each start via ExecStartPre, then runs the
+# Express server. Restart on failure.
+
+[Unit]
+Description=Ola Devboard Backend (Express)
+After=network.target
+ConditionPathExists=/opt/Ola_devboard/backend
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/Ola_devboard/backend
+EnvironmentFile=/opt/Ola_devboard/.env
+ExecStartPre=/usr/bin/env bash /opt/Ola_devboard/scripts/build_version.sh
+ExecStart=/usr/bin/env node src/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

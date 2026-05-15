@@ -1,0 +1,22 @@
+# Ola Devboard frontend (Ola/#225-E). Serves the production build of
+# /opt/Ola_devboard/frontend via `vite preview` on port 3001, bound to
+# 0.0.0.0 so a reverse proxy on box4 (nginx or CF) can front it.
+# Build (npm ci + npm run build) is handled by scripts/hot_update.sh
+# before the unit is restarted; this unit just runs the serve loop.
+
+[Unit]
+Description=Ola Devboard Frontend (vite preview)
+After=network.target
+ConditionPathExists=/opt/Ola_devboard/frontend/dist
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/Ola_devboard/frontend
+EnvironmentFile=/opt/Ola_devboard/.env
+ExecStart=/usr/bin/env npx vite preview --host 0.0.0.0 --port 3001 --strictPort
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
