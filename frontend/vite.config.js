@@ -34,6 +34,16 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    // vite preview (prod on box4) — host 0.0.0.0 + allowedHosts whitelist.
+    // Vite 5 blocks non-localhost Host headers by default; `.olatech.ai`
+    // (leading dot) matches the CF-fronted subdomain plus any future
+    // sibling under the same apex.
+    preview: {
+      host: '0.0.0.0',
+      port: FRONTEND_PORT,
+      strictPort: true,
+      allowedHosts: ['.olatech.ai', 'localhost', '127.0.0.1'],
+    },
     test: {
       environment: 'jsdom',
       globals: false,
