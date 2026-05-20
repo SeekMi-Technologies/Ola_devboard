@@ -7,23 +7,31 @@ const getLogs = require('@/controllers/logs');
 
 let tmpDir;
 let tmpFile;
+let tmpTranscriptionFile;
 let originalEnv;
+let originalTranscriptionEnv;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devboard-logs-'));
   tmpFile = path.join(tmpDir, 'mcp.log');
+  tmpTranscriptionFile = path.join(tmpDir, 'transcription.log');
   originalEnv = process.env.MCP_LOG_FILE_PATH;
+  originalTranscriptionEnv = process.env.TRANSCRIPTION_LOG_FILE_PATH;
   process.env.MCP_LOG_FILE_PATH = tmpFile;
+  process.env.TRANSCRIPTION_LOG_FILE_PATH = tmpTranscriptionFile;
 });
 
 afterAll(() => {
   if (originalEnv === undefined) delete process.env.MCP_LOG_FILE_PATH;
   else process.env.MCP_LOG_FILE_PATH = originalEnv;
+  if (originalTranscriptionEnv === undefined) delete process.env.TRANSCRIPTION_LOG_FILE_PATH;
+  else process.env.TRANSCRIPTION_LOG_FILE_PATH = originalTranscriptionEnv;
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
 beforeEach(() => {
   if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+  if (fs.existsSync(tmpTranscriptionFile)) fs.unlinkSync(tmpTranscriptionFile);
 });
 
 function stubRes() {
@@ -158,5 +166,67 @@ describe('getLogs controller', () => {
     const res = stubRes();
     await getLogs({ query: { limit: 10 } }, res);
     expect(res._body.result.logs.length).toBeLessThanOrEqual(10);
+  });
+
+  // --- transcription source (post-#225) ---
+
+  function makeTranscriptionLine(overrides = {}) {
+    return JSON.stringify({
+      ts: new Date().toISOString(),
+      level: 'info',
+      jobId: '507f1f77bcf86cd799439011',
+      fileId: '507f1f77bcf86cd799439012',
+      status: 'done',
+      durationMs: 1234,
+      message: 'transcription complete',
+      ...overrides,
+    });
+  }
+
+  test('transcription source: TRANSCRIPTION_LOG_FILE_PATH unset → 200 + transcription hint', async () => {
+    const saved = process.env.TRANSCRIPTION_LOG_FILE_PATH;
+    delete process.env.TRANSCRIPTION_LOG_FILE_PATH;
+    try {
+      const res = stubRes();
+      await getLogs({ query: { source: 'transcription' } }, res);
+      expect(res._status).toBe(200);
+      expect(res._body.result.source).toBe('transcription');
+      expect(res._body.result.logs).toEqual([]);
+      expect(res._body.result.hint).toMatch(/TRANSCRIPTION_LOG_FILE_PATH/);
+    } finally {
+      process.env.TRANSCRIPTION_LOG_FILE_PATH = saved;
+    }
+  });
+
+  test('transcription source: file missing → 200 empty (not 500)', async () => {
+    // tmpTranscriptionFile is wiped in beforeEach, so it does not exist.
+    const res = stubRes();
+    await getLogs({ query: { source: 'transcription' } }, res);
+    expect(res._status).toBe(200);
+    expect(res._body.result.source).toBe('transcription');
+    expect(res._body.result.logs).toEqual([]);
+  });
+
+  test('transcription source: valid JSONL parses newest-first', async () => {
+    const oldLine = makeTranscriptionLine({
+      ts: '2026-05-19T00:00:00.000Z',
+      jobId: 'old-job',
+      status: 'running',
+    });
+    const newLine = makeTranscriptionLine({
+      ts: '2026-05-20T00:00:00.000Z',
+      jobId: 'new-job',
+      status: 'done',
+    });
+    fs.writeFileSync(tmpTranscriptionFile, [oldLine, newLine].join('\n') + '\n');
+
+    const res = stubRes();
+    await getLogs({ query: { source: 'transcription', limit: 10 } }, res);
+    expect(res._status).toBe(200);
+    expect(res._body.result.source).toBe('transcription');
+    expect(res._body.result.logs).toHaveLength(2);
+    // Reversed → newest-first
+    expect(res._body.result.logs[0].jobId).toBe('new-job');
+    expect(res._body.result.logs[1].jobId).toBe('old-job');
   });
 });

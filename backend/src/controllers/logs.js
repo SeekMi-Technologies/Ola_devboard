@@ -7,15 +7,24 @@ const Joi = require('joi');
 
 const maskSecrets = require('../utils/redactor');
 
-// Lazy env read so tests can swap MCP_LOG_FILE_PATH without reloading.
-const SOURCE_KEYS = ['mcp'];
+// Lazy env read so tests can swap *_LOG_FILE_PATH without reloading.
+const SOURCE_KEYS = ['mcp', 'transcription'];
 
 function resolvePath(source) {
   if (source === 'mcp') {
     return process.env.MCP_LOG_FILE_PATH || null;
   }
+  if (source === 'transcription') {
+    return process.env.TRANSCRIPTION_LOG_FILE_PATH || null;
+  }
   return null;
 }
+
+const HINT_BY_SOURCE = {
+  mcp: 'MCP_LOG_FILE_PATH not configured — set it in .env to point at CRM’s backend/logs/mcp.log',
+  transcription:
+    'TRANSCRIPTION_LOG_FILE_PATH not configured — set it in .env to point at CRM’s backend/logs/transcription.log',
+};
 
 const querySchema = Joi.object({
   source: Joi.string().valid(...SOURCE_KEYS).default('mcp'),
@@ -64,7 +73,7 @@ async function getLogs(req, res) {
         logs: [],
         totalLinesScanned: 0,
         empty: true,
-        hint: 'MCP_LOG_FILE_PATH not configured — set it in .env to point at CRM’s backend/logs/mcp.log',
+        hint: HINT_BY_SOURCE[source] || `Log source ${source} not configured`,
       },
       message: `Log path for ${source} not configured`,
     });

@@ -5,6 +5,11 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { request } from '@/request';
 
 const LIMIT_OPTIONS = [50, 100, 200, 500];
+// Mirror of backend SOURCE_KEYS (backend/src/controllers/logs.js). Keep in sync.
+const SOURCE_OPTIONS = [
+  { value: 'mcp', label: 'mcp' },
+  { value: 'transcription', label: 'transcription' },
+];
 
 const MONO = {
   fontFamily: 'SFMono-Regular, Consolas, Menlo, monospace',
@@ -20,6 +25,7 @@ export default function LogsPanel() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [source, setSource] = useState('mcp');
   const [limit, setLimit] = useState(100);
   const [codeFilter, setCodeFilter] = useState(null);
   const [tick, setTick] = useState(0);
@@ -27,11 +33,18 @@ export default function LogsPanel() {
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
+    // Clear code filter on source change — column shape differs across sources
+    // (mcp uses .code/.tool/.ok; transcription uses .status/.jobId/.fileId),
+    // so a filter selected on one source is meaningless on the other.
+    setCodeFilter(null);
+  }, [source]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     request
-      .get({ entity: `/dashboard/logs?source=mcp&limit=${limit}` })
+      .get({ entity: `/dashboard/logs?source=${source}&limit=${limit}` })
       .then((res) => {
         if (cancelled) return;
         if (res && res.success) setData(res.result);
@@ -46,22 +59,26 @@ export default function LogsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [limit, tick]);
+  }, [source, limit, tick]);
 
+  // Filter dropdown:
+  //   mcp source filters by `.code` (error code on a tool call)
+  //   transcription source filters by `.status` (pending/running/done/failed)
+  const filterField = source === 'transcription' ? 'status' : 'code';
   const codeOptions = useMemo(() => {
     if (!data || !Array.isArray(data.logs)) return [];
     const set = new Set();
-    for (const r of data.logs) if (r.code) set.add(r.code);
+    for (const r of data.logs) if (r[filterField]) set.add(r[filterField]);
     return Array.from(set).map((c) => ({ value: c, label: c }));
-  }, [data]);
+  }, [data, filterField]);
 
   const filtered = useMemo(() => {
     if (!data || !Array.isArray(data.logs)) return [];
     if (!codeFilter) return data.logs;
-    return data.logs.filter((r) => r.code === codeFilter);
-  }, [data, codeFilter]);
+    return data.logs.filter((r) => r[filterField] === codeFilter);
+  }, [data, codeFilter, filterField]);
 
-  const columns = [
+  const mcpColumns = [
     {
       title: 'Timestamp',
       dataIndex: 'ts',
@@ -122,12 +139,81 @@ export default function LogsPanel() {
     },
   ];
 
+  // status colors follow Job lifecycle in CRM transcriptionWorker:
+  //   done → green, failed → red, running → blue, pending/other → default
+  const STATUS_COLOR = { done: 'green', failed: 'red', running: 'blue' };
+
+  const transcriptionColumns = [
+    {
+      title: 'Timestamp',
+      dataIndex: 'ts',
+      key: 'ts',
+      width: 200,
+      render: (ts) => <span style={MONO}>{fmtTs(ts)}</span>,
+      sorter: (a, b) => new Date(a.ts) - new Date(b.ts),
+      defaultSortOrder: 'descend',
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (s) =>
+        s ? <Tag color={STATUS_COLOR[s] || 'default'}>{s.toUpperCase()}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
+    },
+    {
+      title: 'Job ID',
+      dataIndex: 'jobId',
+      key: 'jobId',
+      width: 220,
+      render: (v) => <span style={MONO}>{v}</span>,
+    },
+    {
+      title: 'File ID',
+      dataIndex: 'fileId',
+      key: 'fileId',
+      width: 220,
+      render: (v) => (v ? <span style={MONO}>{v}</span> : <span style={{ color: '#bbb' }}>—</span>),
+    },
+    {
+      title: 'Duration (ms)',
+      dataIndex: 'durationMs',
+      key: 'durationMs',
+      width: 120,
+      sorter: (a, b) => (a.durationMs || 0) - (b.durationMs || 0),
+      render: (v) => (v != null ? v : <span style={{ color: '#bbb' }}>—</span>),
+    },
+    {
+      title: 'Message',
+      dataIndex: 'message',
+      key: 'message',
+      ellipsis: true,
+      render: (v) => (v ? <span style={MONO}>{v}</span> : <span style={{ color: '#bbb' }}>—</span>),
+    },
+    {
+      title: 'Error',
+      dataIndex: 'error',
+      key: 'error',
+      ellipsis: true,
+      render: (v) => (v ? <span style={{ ...MONO, color: '#cf1322' }}>{v}</span> : <span style={{ color: '#bbb' }}>—</span>),
+    },
+  ];
+
+  const columns = source === 'transcription' ? transcriptionColumns : mcpColumns;
+
   return (
     <div>
       <Space style={{ marginBottom: 16 }} wrap>
         <Button icon={<ReloadOutlined />} onClick={refresh} disabled={loading}>
           Refresh
         </Button>
+        <span style={{ color: '#888', fontSize: 12 }}>Source:</span>
+        <Select
+          value={source}
+          onChange={setSource}
+          options={SOURCE_OPTIONS}
+          style={{ width: 150 }}
+        />
         <span style={{ color: '#888', fontSize: 12 }}>Limit:</span>
         <Select
           value={limit}
@@ -135,7 +221,9 @@ export default function LogsPanel() {
           options={LIMIT_OPTIONS.map((n) => ({ value: n, label: String(n) }))}
           style={{ width: 100 }}
         />
-        <span style={{ color: '#888', fontSize: 12 }}>Filter by code:</span>
+        <span style={{ color: '#888', fontSize: 12 }}>
+          Filter by {filterField}:
+        </span>
         <Select
           value={codeFilter}
           onChange={setCodeFilter}
@@ -152,16 +240,23 @@ export default function LogsPanel() {
         )}
       </Space>
       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
+      {data && data.empty && data.hint && (
+        <Alert type="info" message={data.hint} style={{ marginBottom: 16 }} />
+      )}
       <Spin spinning={loading}>
         <Table
           dataSource={filtered}
           columns={columns}
-          rowKey={(_, i) => `${data?.source || 'mcp'}-${i}`}
+          rowKey={(_, i) => `${data?.source || source}-${i}`}
           pagination={{ pageSize: 50, showSizeChanger: false }}
           size="small"
           scroll={{ x: 1200 }}
           locale={{ emptyText: 'No log entries' }}
-          rowClassName={(r) => (r.ok ? 'log-row-ok' : 'log-row-fail')}
+          rowClassName={(r) => {
+            // mcp: r.ok===true → green; transcription: r.status==='done' → green
+            const ok = source === 'transcription' ? r.status === 'done' : r.ok;
+            return ok ? 'log-row-ok' : 'log-row-fail';
+          }}
         />
       </Spin>
     </div>
