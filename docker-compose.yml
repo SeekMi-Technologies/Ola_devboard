@@ -1,0 +1,58 @@
+# Ola_devboard docker-compose (Ola/#225 dockerize).
+#
+# Two services on a private compose network:
+#   backend  — Express, reads ./.env (DATABASE / DEVBOARD_PASSWORD /
+#              SESSION_SECRET / COOKIE_SECURE / health-probe URLs). Bound to
+#              0.0.0.0 *inside* the container so the frontend nginx can reach
+#              it; on the host it is published to 127.0.0.1 only (never public).
+#   frontend — nginx serving the static Vite build + reverse-proxying /api and
+#              /health to backend. Publishes :80 for Cloudflare to front.
+#
+# Build with scripts/docker_build.sh so /api/version reports the real commit
+# (it exports GIT_* + BUILT_AT, which the backend Dockerfile bakes into
+# version.json). `docker compose build` directly works too but reports
+# rev=unknown.
+#
+# Portability: nothing here pins box4. Any host with Docker + the prod .env +
+# Atlas reachability runs it (that is the whole point of dockerizing — see
+# docs/DEPLOY_BOX3.md).
+
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        GIT_REV: ${GIT_REV:-unknown}
+        GIT_SHA: ${GIT_SHA:-unknown}
+        GIT_SHA_SHORT: ${GIT_SHA_SHORT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+        BUILT_AT: ${BUILT_AT:-unknown}
+    image: ola-devboard-backend:latest
+    env_file: .env
+    environment:
+      # Networking invariants — override whatever the dev .env carries.
+      # 0.0.0.0 is safe here: auth (Ola/#225-A) is on, and the port is only
+      # exposed to the compose network + host loopback, never the public IP.
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8890
+    ports:
+      # Host-local only — for on-box `curl 127.0.0.1:8890/...` verification.
+      # Public traffic goes through the frontend nginx, not this mapping.
+      - "127.0.0.1:8890:8890"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    image: ola-devboard-frontend:latest
+    depends_on:
+      - backend
+    ports:
+      # Coexistence: do NOT grab :80 by default — a host already running other
+      # products (e.g. box3's PDF service / its reverse proxy) likely owns 80.
+      # Publish to a configurable host port instead and let the box's existing
+      # nginx / Cloudflare route devboard.olatech.ai to it. Override both in
+      # .env: DEVBOARD_BIND_ADDR (0.0.0.0 for public, 127.0.0.1 to keep it
+      # behind a local proxy) and DEVBOARD_HTTP_PORT.
+      - "${DEVBOARD_BIND_ADDR:-127.0.0.1}:${DEVBOARD_HTTP_PORT:-8080}:80"
+    restart: unless-stopped
