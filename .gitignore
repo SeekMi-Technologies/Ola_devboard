@@ -15,6 +15,13 @@ build/
 .env.production
 .env.*.local
 
+# TLS origin certs (per-host, mounted by docker-compose.tls.yml) — never commit
+certs/
+
+# A docker-compose.override.yml is per-host/local; the committed, opt-in TLS
+# overlay is docker-compose.tls.yml (enabled via -f / COMPOSE_FILE)
+docker-compose.override.yml
+
 # Defensive: never commit anything that *looks* like a credential.
 # These are wide patterns mirrored from the CRM repo (see Ola/.gitignore
 # line 48). If you find a false positive (e.g. a util named *secret*),

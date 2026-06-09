@@ -1,0 +1,26 @@
+# Opt-in TLS overlay for the frontend (Cloudflare Origin Certificate).
+#
+# The base docker-compose.yml serves HTTP on :80 only — correct for a host
+# behind a reverse proxy or Cloudflare Flexible. On a host fronted by Cloudflare
+# in Full (strict), CF dials the origin over HTTPS, so the origin needs a :443
+# listener with a cert CF trusts. This overlay adds that WITHOUT baking secrets
+# into the image: the cert is mounted from ./certs at runtime (./certs is
+# gitignored — drop a CF Origin Certificate's origin.crt + origin.key there,
+# chmod 600) and the TLS nginx config is mounted from frontend/nginx.tls.conf.
+#
+# Enable it one of two ways:
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d
+# or, so plain `docker compose ...` commands pick it up, add to .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.tls.yml
+#
+# ports/volumes merge with the base (compose appends list entries), so the
+# frontend ends up publishing both :80 (base) and :443 (here). See
+# docs/DEPLOY_DOCKER.md.
+
+services:
+  frontend:
+    ports:
+      - "${DEVBOARD_BIND_ADDR:-0.0.0.0}:443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./frontend/nginx.tls.conf:/etc/nginx/conf.d/default.conf:ro
