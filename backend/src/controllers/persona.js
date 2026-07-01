@@ -71,6 +71,18 @@ async function listPersonas(req, res) {
   res.json({ success: true, result: { env, admins: rows } });
 }
 
+async function getGlobal(req, res) {
+  const picked = pickEnv(req, res);
+  if (!picked) return;
+  const { status, body } = await callNanobot(picked.cfg, '/internal/global');
+  if (status !== 200) {
+    return res
+      .status(502)
+      .json({ success: false, result: null, message: body.error || `persona API returned ${status}` });
+  }
+  res.json({ success: true, result: body });
+}
+
 async function getPersona(req, res) {
   const picked = pickEnv(req, res);
   if (!picked) return;
@@ -109,4 +121,4 @@ async function putPersona(req, res) {
   res.json({ success: true, result: body });
 }
 
-module.exports = { getPersonaEnvs, listPersonas, getPersona, putPersona };
+module.exports = { getPersonaEnvs, listPersonas, getGlobal, getPersona, putPersona };

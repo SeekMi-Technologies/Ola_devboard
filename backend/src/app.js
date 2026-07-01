@@ -66,6 +66,7 @@ function buildApp() {
 
   // Persona control-plane (edit per-tenant SOUL/USER on prod/staging via nanobot).
   app.get('/api/personas/envs', requireAuth, safe(controllers.getPersonaEnvs));
+  app.get('/api/global', requireAuth, safe(controllers.getGlobal));
   app.get('/api/personas', requireAuth, safe(controllers.listPersonas));
   app.get('/api/personas/:env/:adminId', requireAuth, safe(controllers.getPersona));
   app.put('/api/personas/:env/:adminId/:file', requireAuth, safe(controllers.putPersona));

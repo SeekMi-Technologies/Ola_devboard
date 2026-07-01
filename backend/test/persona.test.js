@@ -92,6 +92,20 @@ describe('persona control-plane BFF', () => {
     expect(res._body.result.files['SOUL.md'].content).toBe('hi');
   });
 
+  test('getGlobal proxies the read-only global files', async () => {
+    mockFetch(200, {
+      files: {
+        'SOUL.md': { content: 'G', source: 'global', editable: false },
+        'AGENTS.md': { content: 'A', source: 'global', editable: false },
+        'TOOLS.md': { content: 'T', source: 'global', editable: false },
+      },
+    });
+    const res = stubRes();
+    await persona.getGlobal({ query: { env: 'staging' } }, res);
+    expect(res._body.success).toBe(true);
+    expect(res._body.result.files['AGENTS.md'].editable).toBe(false);
+  });
+
   test('putPersona rejects non-string content without calling nanobot', async () => {
     global.fetch = jest.fn();
     const res = stubRes();

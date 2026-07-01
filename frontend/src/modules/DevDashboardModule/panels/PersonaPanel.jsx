@@ -145,6 +145,66 @@ function PersonaEditor({ env, admin, onClose, onSaved }) {
 }
 
 // ---------------------------------------------------------------------------
+// Global defaults viewer — read-only (SOUL/AGENTS/TOOLS are edited via the repo
+// template + deploy, never on the box).
+// ---------------------------------------------------------------------------
+function GlobalViewer({ env, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [files, setFiles] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    request
+      .get({ entity: `/global?env=${env}` })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.success) setFiles(res.result.files);
+        else setError(res?.message || 'Failed to load global defaults');
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [env]);
+
+  return (
+    <Modal
+      open
+      title={`Global defaults · ${env} (read-only)`}
+      width={820}
+      onCancel={onClose}
+      footer={<Button onClick={onClose}>Close</Button>}
+    >
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 12 }}
+        message="Edit these in the repo (ola/nanobot-workspace/*.md) + deploy — the box copies are overwritten every deploy. AGENTS is the authority/security layer."
+      />
+      {error && <Alert type="error" message={error} style={{ marginBottom: 12 }} />}
+      <Spin spinning={loading}>
+        {files && (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {['SOUL.md', 'AGENTS.md', 'TOOLS.md'].map((name) => (
+              <div key={name}>
+                <Text strong>{name}</Text>
+                <Input.TextArea
+                  readOnly
+                  value={files[name]?.content ?? ''}
+                  autoSize={{ minRows: 4, maxRows: 16 }}
+                  style={{ marginTop: 4, background: '#fafafa' }}
+                />
+              </div>
+            ))}
+          </Space>
+        )}
+      </Spin>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Panel — env picker + tenant table.
 // ---------------------------------------------------------------------------
 export default function PersonaPanel() {
@@ -154,6 +214,7 @@ export default function PersonaPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [showGlobal, setShowGlobal] = useState(false);
 
   useEffect(() => {
     request.get({ entity: '/personas/envs' }).then((res) => {
@@ -248,6 +309,9 @@ export default function PersonaPanel() {
         <Button size="small" onClick={load} disabled={!env}>
           Refresh
         </Button>
+        <Button size="small" onClick={() => setShowGlobal(true)} disabled={!env}>
+          Global defaults (read-only)
+        </Button>
       </div>
       {error && <Alert type="warning" message={error} style={{ marginBottom: 16 }} />}
       <Spin spinning={loading}>
@@ -267,6 +331,7 @@ export default function PersonaPanel() {
           onSaved={load}
         />
       )}
+      {showGlobal && <GlobalViewer env={env} onClose={() => setShowGlobal(false)} />}
     </div>
   );
 }

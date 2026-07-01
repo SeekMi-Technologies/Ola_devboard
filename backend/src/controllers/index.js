@@ -16,6 +16,7 @@ module.exports = {
   me: auth.me,
   getPersonaEnvs: persona.getPersonaEnvs,
   listPersonas: persona.listPersonas,
+  getGlobal: persona.getGlobal,
   getPersona: persona.getPersona,
   putPersona: persona.putPersona,
 };
