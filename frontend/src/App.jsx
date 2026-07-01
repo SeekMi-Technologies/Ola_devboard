@@ -10,6 +10,7 @@ import UserPanoramaPanel from '@/modules/DevDashboardModule/panels/UserPanoramaP
 import McpHealthPanel from '@/modules/DevDashboardModule/panels/McpHealthPanel';
 import LogsPanel from '@/modules/DevDashboardModule/panels/LogsPanel';
 import DbSummaryPanel from '@/modules/DevDashboardModule/panels/DbSummaryPanel';
+import PersonaPanel from '@/modules/DevDashboardModule/panels/PersonaPanel';
 
 const { Content, Footer, Header } = Layout;
 const { Title } = Typography;
@@ -19,6 +20,7 @@ const PANELS = [
   { key: 'email-token', label: 'Email Token', component: <EmailTokenPanel /> },
   { key: 'user-activity', label: 'User Activity', component: <UserActivityPanel /> },
   { key: 'users', label: 'Users', component: <UserPanoramaPanel /> },
+  { key: 'personas', label: 'Personas', component: <PersonaPanel /> },
   { key: 'mcp-health', label: 'MCP Health', component: <McpHealthPanel /> },
   { key: 'logs', label: 'Logs', component: <LogsPanel /> },
   { key: 'db-summary', label: 'DB Summary', component: <DbSummaryPanel /> },

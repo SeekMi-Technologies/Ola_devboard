@@ -98,13 +98,14 @@ describe('App — authed path renders dashboard (Ola/#220 D12 + #225-C)', () => 
     ({ default: App } = await import('./App.jsx'));
   });
 
-  test('renders the dashboard header + all seven tab labels after auth', async () => {
+  test('renders the dashboard header + all eight tab labels after auth', async () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('Ola Dev Dashboard')).toBeDefined());
     expect(screen.getByText('LLM Usage')).toBeDefined();
     expect(screen.getByText('Email Token')).toBeDefined();
     expect(screen.getByText('User Activity')).toBeDefined();
     expect(screen.getByText('Users')).toBeDefined();
+    expect(screen.getByText('Personas')).toBeDefined();
     expect(screen.getByText('MCP Health')).toBeDefined();
     expect(screen.getByText('Logs')).toBeDefined();
     expect(screen.getByText('DB Summary')).toBeDefined();
