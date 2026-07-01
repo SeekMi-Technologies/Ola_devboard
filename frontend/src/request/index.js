@@ -53,6 +53,16 @@ const request = {
       return envelope(error);
     }
   },
+
+  put: async ({ entity, body }) => {
+    try {
+      const response = await axios.put(entity, body);
+      return response.data;
+    } catch (error) {
+      if (error?.response?.status === 401) notifyUnauthenticated();
+      return envelope(error);
+    }
+  },
 };
 
 export { request };
