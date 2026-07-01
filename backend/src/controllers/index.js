@@ -1,5 +1,6 @@
 // Aggregator: every panel handler in one require.
 const auth = require('./auth');
+const persona = require('./persona');
 
 module.exports = {
   getLlmUsage: require('./llmUsage'),
@@ -13,4 +14,8 @@ module.exports = {
   login: auth.login,
   logout: auth.logout,
   me: auth.me,
+  getPersonaEnvs: persona.getPersonaEnvs,
+  listPersonas: persona.listPersonas,
+  getPersona: persona.getPersona,
+  putPersona: persona.putPersona,
 };
