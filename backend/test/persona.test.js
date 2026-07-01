@@ -54,8 +54,8 @@ describe('persona control-plane BFF', () => {
   test('listPersonas joins nanobot admins with CRM names', async () => {
     mockFetch(200, {
       admins: [
-        { adminId: '6a03e003dcaca7e136b3fc03', soulSource: 'override', updatedAt: 1 },
-        { adminId: '6a24c414ba8b01b0c5e8584b', soulSource: 'global', updatedAt: null },
+        { adminId: '6a03e003dcaca7e136b3fc03', soulSource: 'override', userSource: 'override', updatedAt: 1 },
+        { adminId: '6a24c414ba8b01b0c5e8584b', soulSource: 'global', userSource: 'global', updatedAt: null },
       ],
     });
     resolveNames.mockResolvedValueOnce(
@@ -69,6 +69,7 @@ describe('persona control-plane BFF', () => {
       name: 'Sydy Liu',
       email: 's@x.com',
       soulSource: 'override',
+      userSource: 'override',
       updatedAt: 1,
     });
     // no CRM record -> name null, not a crash

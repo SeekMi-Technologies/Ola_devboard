@@ -64,6 +64,7 @@ async function listPersonas(req, res) {
       name: fullName(d),
       email: d ? d.email : null,
       soulSource: a.soulSource,
+      userSource: a.userSource,
       updatedAt: a.updatedAt,
     };
   });

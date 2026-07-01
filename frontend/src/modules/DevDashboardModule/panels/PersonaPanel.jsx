@@ -183,6 +183,9 @@ export default function PersonaPanel() {
     load();
   }, [load]);
 
+  const sourceTag = (s) =>
+    s === 'override' ? <Tag color="green">custom</Tag> : <Tag>global default</Tag>;
+
   const columns = [
     {
       title: 'Tenant',
@@ -197,21 +200,36 @@ export default function PersonaPanel() {
       ),
     },
     {
-      title: 'Persona',
+      title: 'SOUL (persona)',
       dataIndex: 'soulSource',
       key: 'soulSource',
-      width: 150,
-      render: (s) =>
-        s === 'override' ? <Tag color="green">custom</Tag> : <Tag>global default</Tag>,
+      width: 140,
+      render: sourceTag,
     },
-    { title: 'SOUL updated', key: 'updatedAt', width: 200, render: (_, r) => fmtTime(r.updatedAt) },
+    {
+      title: 'USER (profile)',
+      dataIndex: 'userSource',
+      key: 'userSource',
+      width: 140,
+      render: sourceTag,
+    },
+    {
+      title: 'SOUL updated',
+      key: 'updatedAt',
+      width: 180,
+      render: (_, r) => (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {fmtTime(r.updatedAt)}
+        </Text>
+      ),
+    },
     {
       title: '',
       key: 'edit',
-      width: 90,
+      width: 130,
       render: (_, r) => (
-        <Button size="small" onClick={() => setEditing(r)}>
-          Edit
+        <Button type="primary" ghost size="small" onClick={() => setEditing(r)}>
+          Edit SOUL / USER
         </Button>
       ),
     },
