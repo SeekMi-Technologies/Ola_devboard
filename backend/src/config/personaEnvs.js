@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 
 const ENVS = {
   prod: {
-    nanobotUrl: process.env.PERSONA_PROD_NANOBOT_URL, // e.g. http://100.83.72.110:8902
+    nanobotUrl: process.env.PERSONA_PROD_NANOBOT_URL, // e.g. http://100.83.72.110:8900
     token: process.env.PERSONA_PROD_TOKEN,
     mongoUri: process.env.PERSONA_PROD_MONGO, // optional; falls back to default DATABASE
   },
@@ -16,6 +16,11 @@ const ENVS = {
     nanobotUrl: process.env.PERSONA_STAGING_NANOBOT_URL,
     token: process.env.PERSONA_STAGING_TOKEN,
     mongoUri: process.env.PERSONA_STAGING_MONGO,
+  },
+  local: {
+    nanobotUrl: process.env.PERSONA_LOCAL_NANOBOT_URL, // local persona-api → ~/.nanobot/workspace
+    token: process.env.PERSONA_LOCAL_TOKEN,
+    mongoUri: process.env.PERSONA_LOCAL_MONGO, // optional; falls back to default DATABASE
   },
 };
 
