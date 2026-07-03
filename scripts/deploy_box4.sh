@@ -54,6 +54,16 @@ set -a; source "$SERVERS_ENV"; set +a
 : "${BOX1_TS_IP:?BOX1_TS_IP not set in $SERVERS_ENV — box1 must be in the Tailscale mesh}"
 : "${BOX2_TS_IP:?BOX2_TS_IP not set in $SERVERS_ENV — box2 must be in the Tailscale mesh}"
 
+# Persona control-plane vars are OPTIONAL — an env with an empty URL or TOKEN is
+# just hidden from the devboard picker. Default to empty so the deploy never fails
+# when a given environment isn't wired yet. Fill in SERVERS.env to enable one.
+: "${PERSONA_PROD_NANOBOT_URL:=}"
+: "${PERSONA_PROD_TOKEN:=}"
+: "${PERSONA_PROD_MONGO:=}"
+: "${PERSONA_STAGING_NANOBOT_URL:=}"
+: "${PERSONA_STAGING_TOKEN:=}"
+: "${PERSONA_STAGING_MONGO:=}"
+
 if ! command -v sshpass >/dev/null; then
   echo "[deploy_box4] FAIL: sshpass not installed locally." >&2
   echo "  macOS:  brew install hudochenkov/sshpass/sshpass" >&2
@@ -97,6 +107,23 @@ if SSH "test -f /opt/Ola_devboard/.env" && [[ "$FORCE_ENV" -ne 1 ]]; then
   echo "  /opt/Ola_devboard/.env already exists on box4 — keeping it."
   echo "  Rotate creds: edit $SERVERS_ENV then re-run with --force-env"
 else
+  # Guard: --force-env regenerates .env wholesale from SERVERS.env. If box4 already
+  # has a persona env wired (non-empty *_NANOBOT_URL) that SERVERS.env doesn't
+  # define, regenerating would silently un-wire it. Abort so the operator backfills
+  # SERVERS.env first (rather than discovering the picker lost an env post-deploy).
+  if [[ "$FORCE_ENV" -eq 1 ]] && SSH "test -f /opt/Ola_devboard/.env"; then
+    existing="$(SSH "cat /opt/Ola_devboard/.env" 2>/dev/null || true)"
+    for key in PERSONA_PROD_NANOBOT_URL PERSONA_STAGING_NANOBOT_URL; do
+      cur="$(printf '%s\n' "$existing" | sed -nE "s/^${key}=['\"]?([^'\"]+).*/\1/p")"
+      new="$(eval "printf '%s' \"\${$key}\"")"
+      if [[ -n "$cur" && -z "$new" ]]; then
+        echo "[deploy_box4] ABORT: box4 .env has $key set, but SERVERS.env does not." >&2
+        echo "  --force-env would wipe this wired persona env. Add its PERSONA_* vars" >&2
+        echo "  to $SERVERS_ENV first, then re-run." >&2
+        exit 1
+      fi
+    done
+  fi
   ENV_TMP=$(mktemp)
   trap "rm -f '$ENV_TMP'" EXIT
   cat > "$ENV_TMP" <<EOF
@@ -127,6 +154,18 @@ NANOBOT_GATEWAY_HEALTH_URL=http://$BOX2_TS_IP:8901/health
 
 # Empty = Logs panel graceful-degrade (decision D4). Box4 has no local mcp.log.
 MCP_LOG_FILE_PATH=
+
+# --- Persona control-plane (devboard -> nanobot serve /internal/persona) ---
+# Sourced from SERVERS.env. An env whose NANOBOT_URL or TOKEN is empty is hidden
+# from the devboard picker. TOKEN must match that box's .persona_token file.
+# PROD = Box2 Tailscale:8900 ; STAGING = Box6 Tailscale:8900. *_MONGO empty =>
+# fall back to DATABASE above for id->name lookups.
+PERSONA_PROD_NANOBOT_URL='$PERSONA_PROD_NANOBOT_URL'
+PERSONA_PROD_TOKEN='$PERSONA_PROD_TOKEN'
+PERSONA_PROD_MONGO='$PERSONA_PROD_MONGO'
+PERSONA_STAGING_NANOBOT_URL='$PERSONA_STAGING_NANOBOT_URL'
+PERSONA_STAGING_TOKEN='$PERSONA_STAGING_TOKEN'
+PERSONA_STAGING_MONGO='$PERSONA_STAGING_MONGO'
 EOF
 
   if [[ "$FORCE_ENV" -eq 1 ]]; then
